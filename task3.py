@@ -4,6 +4,9 @@ class NotApplicableError(Exception):
 class NotBalancedError(Exception):
     pass
 
+
+
+
 class TransportationModel:
     def __init__(self, supply:list, costs:list, demand:list, what_to_print:str = 'solution'):
         self.supply = supply
@@ -103,9 +106,9 @@ class NordWestModel(TransportationModel):
 class VogelModel(TransportationModel):
     def __init__(self, supply:list = None, costs:list = None, demand:list = None, transportation_model:TransportationModel = None):
         if transportation_model == None:
-            super().__init__(supply, costs, demand, what_to_print="Vogels' solution")
+            super().__init__(supply, costs, demand, what_to_print="Vogel's solution")
         else:
-            super().__init__(transportation_model.supply, transportation_model.costs, transportation_model.demand, what_to_print="Vogel solution")
+            super().__init__(transportation_model.supply, transportation_model.costs, transportation_model.demand, what_to_print="Vogel's solution")
 
     def solve(self):
         self.mutable_costs = [el.copy() for el in self.costs]
@@ -148,20 +151,19 @@ class VogelModel(TransportationModel):
 
         if self.supply[i] - supply_occupied  < self.demand[j] - demand_satisfied:
             self.solution[i][j] = self.supply[i] - supply_occupied
-            self.__del(i, True)
+            self.__del_row_column(i, True)
         else:
             self.solution[i][j] = self.demand[j] - demand_satisfied
-            self.__del(j, False)
+            self.__del_row_column(j, False)
 
 
-    def __del(self, i, is_row):
+    def __del_row_column(self, i, is_row):
         if is_row:
             for j in range(len(self.mutable_costs[0])):
                 self.mutable_costs[i][j] = float('inf')
         else:
             for j in range(len(self.mutable_costs)):
                 self.mutable_costs[j][i] = float('inf')
-
 
 
     def __diff_of_smallest(self, a:list):
@@ -174,9 +176,9 @@ class VogelModel(TransportationModel):
             if i < min2:
                 min2 = i
                 continue
-        
         return min2 - min1 if (min1 != float('inf') or min2 != float('inf')) else -1
             
+
     def __ind_of_smallest(self, a:list):
         min1 = float('inf')
         min_index = -1
@@ -187,13 +189,45 @@ class VogelModel(TransportationModel):
                 
         return min_index
 
+class RusselsModel(TransportationModel):
+    def __init__(self, supply:list = None, costs:list = None, demand:list = None, transportation_model:TransportationModel = None):
+        if transportation_model == None:
+            super().__init__(supply, costs, demand, what_to_print="Russell's solution")
+        else:
+            super().__init__(transportation_model.supply, transportation_model.costs, transportation_model.demand, what_to_print="Russell's solution")
+
+    def solve(self):
+        #TODO
+        while True:
+            return
+
+    def __occupie(self, i, j):
+        supply_occupied = sum(self.solution[i])
+        demand_satisfied = sum([self.solution[el][j] for el in range(len(self.solution))])
+
+        if self.supply[i] - supply_occupied  < self.demand[j] - demand_satisfied:
+            self.solution[i][j] = self.supply[i] - supply_occupied
+            self.__del_row_column(i, True)
+        else:
+            self.solution[i][j] = self.demand[j] - demand_satisfied
+            self.__del_row_column(j, False)
+
+
+    def __del_row_column(self, i, is_row):
+        if is_row:
+            for j in range(len(self.mutable_costs[0])):
+                self.mutable_costs[i][j] = float('inf')
+        else:
+            for j in range(len(self.mutable_costs)):
+                self.mutable_costs[j][i] = float('inf')
 
 
 n = TransportationModel([140,180,160], [[2,3,4,2,4], [8,4,1,4,1], [9,7,3,7,2]], [60,70,120,130,100])
+n.print_init()
 
-b = NordWestModel(transportation_model = n)
-b.print_solution()
+NordWestModel(transportation_model = n).print_solution()
 
-a = VogelModel(transportation_model = n)
-a.print_solution()
+VogelModel(transportation_model = n).print_solution()
 
+a = RusselsModel(transportation_model = n)
+a.print_solution
