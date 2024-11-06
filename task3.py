@@ -8,17 +8,24 @@ class NotBalancedError(Exception):
 
 
 class TransportationModel:
-    def __init__(self, supply:list, costs:list, demand:list, what_to_print:str = 'solution'):
+    def __init__(self, supply:list, costs:list, demand:list, whoes_solution:str = 'solution'):
         self.supply = supply
         self.costs = costs
         self.demand = demand
-        self.what_to_print = what_to_print
+        self.whoes_solution = whoes_solution
         self.check()
 
         self.max_length = max([len(str(i)) for i in self.supply])
         self.max_length = max([self.max_length] + [len(str(i)) for i in self.demand])
         self.max_length = max([self.max_length] + [len(str(i)) for j in self.costs for i in j])
-        self.formatting = '{:'+str(self.max_length) + '}'
+        self.max_length += 1
+
+        self.formatting = '{:'+str(self.max_length) + '}'   
+        
+        for i in range(len(self.costs)):
+            for j in range(len(self.costs[0])):
+                if self.costs[i][j] == 'M':
+                    self.costs[i][j] = float("inf")
 
         self.solution = [[0 for _ in range(len(self.costs[0]))] for _ in range(len(self.costs))]
 
@@ -33,11 +40,12 @@ class TransportationModel:
         if sum(self.demand) != sum(self.supply):
             raise NotBalancedError
         
-    def __print(self, what, name):
+    def __print(self, table, whoes_solution):
         ind = 0
-        print('======================================')
-        print(name)
-        for i in what:
+        print('\n\n')
+        print('=' * (self.max_length + 1) * (len(self.demand) + 1))
+        print(whoes_solution)
+        for i in table:
             for j in i:
                 print(self.formatting.format(j), end=' ')
             print(self.formatting.format(self.supply[ind]))
@@ -46,31 +54,33 @@ class TransportationModel:
             print(self.formatting.format(i), end=' ')
         print()
 
-    def __print_debug(self, what, name):
-        ind = 0
-        print('======================================')
-        print(name)
-        for i in what:
-            for j in i:
-                print(self.formatting.format(j), end=' ')
-            print(self.formatting.format(self.supply[ind]))
-            ind += 1
-        for i in self.demand:
-            print(self.formatting.format(i), end=' ')
-        print()
+
+    def __print_debug(self, table):
+        self.__print(table, 'debug')
+
 
     def print_init(self):
-        self.__print(self.costs, "initial")
+        self.__print(self.costs, 'initial')
         
     def print_solution(self):
         self.solve()
-        self.__print(self.solution, self.what_to_print)
+        self.__print(self.solution, self.whoes_solution)
         
         final_cost = 0
+        inf_cost = 0
         for i in range(len(self.solution)):
             for j in range(len(self.solution[0])):
-                final_cost += self.solution[i][j] * self.costs[i][j]
-        print(f"aproximated optimum = {final_cost}")
+                if self.costs[i][j] == float('inf'):
+                    inf_cost += self.solution[i][j]
+                else:
+                    final_cost += self.solution[i][j] * self.costs[i][j]
+
+        print(f"\naproximated optimum = {final_cost}", end=' ')
+        if inf_cost != 0:
+            print(f'+ {inf_cost} inf',end='')
+        print()
+        
+
 
     def solve(self):
         pass
@@ -78,9 +88,9 @@ class TransportationModel:
 class NordWestModel(TransportationModel):
     def __init__(self, supply:list = None, costs:list = None, demand:list = None, transportation_model:TransportationModel = None):
         if transportation_model == None:
-            super().__init__(supply, costs, demand, what_to_print="Nord west solution")
+            super().__init__(supply, costs, demand, whoes_solution="Nord west solution")
         else:
-            super().__init__(transportation_model.supply, transportation_model.costs, transportation_model.demand, what_to_print="Nord west solution")
+            super().__init__(transportation_model.supply, transportation_model.costs, transportation_model.demand, whoes_solution="Nord west solution")
 
 
     def solve(self):
@@ -106,9 +116,9 @@ class NordWestModel(TransportationModel):
 class VogelModel(TransportationModel):
     def __init__(self, supply:list = None, costs:list = None, demand:list = None, transportation_model:TransportationModel = None):
         if transportation_model == None:
-            super().__init__(supply, costs, demand, what_to_print="Vogel's solution")
+            super().__init__(supply, costs, demand, whoes_solution="Vogel's solution")
         else:
-            super().__init__(transportation_model.supply, transportation_model.costs, transportation_model.demand, what_to_print="Vogel's solution")
+            super().__init__(transportation_model.supply, transportation_model.costs, transportation_model.demand, whoes_solution="Vogel's solution")
 
     def solve(self):
         self.mutable_costs = [el.copy() for el in self.costs]
@@ -192,14 +202,35 @@ class VogelModel(TransportationModel):
 class RusselsModel(TransportationModel):
     def __init__(self, supply:list = None, costs:list = None, demand:list = None, transportation_model:TransportationModel = None):
         if transportation_model == None:
-            super().__init__(supply, costs, demand, what_to_print="Russell's solution")
+            super().__init__(supply, costs, demand, whoes_solution = "Russell's solution")
         else:
-            super().__init__(transportation_model.supply, transportation_model.costs, transportation_model.demand, what_to_print="Russell's solution")
+            super().__init__(transportation_model.supply, transportation_model.costs, transportation_model.demand, whoes_solution="Russell's solution")
 
     def solve(self):
-        #TODO
+        self.mutable_costs = [el.copy() for el in self.costs]
         while True:
-            return
+            max_of_rows = [max(i) for i in self.mutable_costs]
+            max_of_columns = [max(i) for i in [[self.mutable_costs[el][j] for el in range(len(self.mutable_costs))] for j in range(len(self.mutable_costs[0]))]]
+            
+            min_delta = float('inf')
+            min_i = -1
+            min_j = -1
+            for i in range(len(self.mutable_costs)):
+                for j in range(len(self.mutable_costs[0])):
+                    if self.mutable_costs[i][j] == -1:
+                        continue
+                    delta = self.mutable_costs[i][j] - max_of_rows[i] - max_of_columns[j]
+                    if min_delta > delta:
+                        min_delta = delta
+                        min_i, min_j = i, j
+            
+            if min_i == -1:
+                return
+            
+            self.__occupie(min_i,min_j)
+            
+
+
 
     def __occupie(self, i, j):
         supply_occupied = sum(self.solution[i])
@@ -216,18 +247,22 @@ class RusselsModel(TransportationModel):
     def __del_row_column(self, i, is_row):
         if is_row:
             for j in range(len(self.mutable_costs[0])):
-                self.mutable_costs[i][j] = float('inf')
+                self.mutable_costs[i][j] = -1
         else:
             for j in range(len(self.mutable_costs)):
-                self.mutable_costs[j][i] = float('inf')
+                self.mutable_costs[j][i] = -1
 
 
-n = TransportationModel([140,180,160], [[2,3,4,2,4], [8,4,1,4,1], [9,7,3,7,2]], [60,70,120,130,100])
-n.print_init()
 
-NordWestModel(transportation_model = n).print_solution()
 
-VogelModel(transportation_model = n).print_solution()
 
-a = RusselsModel(transportation_model = n)
-a.print_solution
+def main():
+    n = TransportationModel([50, 60, 50, 50], [[16,16,13,22,17], [14,14,13,19,15], [19,19,20,23,'M'], ['M',0,'M',0,0]], [30,20,70,30,60])
+    n.print_init()
+
+    NordWestModel(transportation_model = n).print_solution()
+    VogelModel(transportation_model = n).print_solution()
+    RusselsModel(transportation_model = n).print_solution()
+
+
+main()
