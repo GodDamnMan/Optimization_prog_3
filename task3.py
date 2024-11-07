@@ -4,8 +4,7 @@ class NotApplicableError(Exception):
 class NotBalancedError(Exception):
     pass
 
-
-
+inf = 0
 
 class TransportationModel:
     def __init__(self, supply:list, costs:list, demand:list, whoes_solution:str = 'solution'):
@@ -14,18 +13,27 @@ class TransportationModel:
         self.demand = demand
         self.whoes_solution = whoes_solution
         self.check()
+        global inf
 
         self.max_length = max([len(str(i)) for i in self.supply])
         self.max_length = max([self.max_length] + [len(str(i)) for i in self.demand])
-        self.max_length = max([self.max_length] + [len(str(i)) for j in self.costs for i in j])
+        for j in self.costs:
+            for i in j:
+                if(i == inf):
+                    continue
+                self.max_length = max(self.max_length, len(str(i)))
         self.max_length += 1
 
+        if(inf == 0):
+            inf = 10**self.max_length        
+        self.infinity = inf
+        
         self.formatting = '{:'+str(self.max_length) + '}'   
         
         for i in range(len(self.costs)):
             for j in range(len(self.costs[0])):
                 if self.costs[i][j] == 'M':
-                    self.costs[i][j] = float("inf")
+                    self.costs[i][j] = self.infinity
 
         self.solution = [[0 for _ in range(len(self.costs[0]))] for _ in range(len(self.costs))]
 
@@ -40,27 +48,36 @@ class TransportationModel:
         if sum(self.demand) != sum(self.supply):
             raise NotBalancedError
         
-    def __print(self, table, whoes_solution):
+    def __print(self, table, whos_solution):
         ind = 0
         print('\n\n')
-        print('=' * (self.max_length + 1) * (len(self.demand) + 1))
-        print(whoes_solution)
+        print('=' * (self.max_length + 2) * (len(self.demand) + 2))
+        print(whos_solution)
+        print("       ", end="")
+        print('_' * (self.max_length + 1) * (len(self.demand) + 1)+"Supply")
+        k=0
         for i in table:
+            if k == 0:
+                print("Cost  |", end="")
+                k+=1
+            else:
+                print("      |", end="")
             for j in i:
-                print(self.formatting.format(j), end=' ')
+                if(j != self.infinity):
+                    print(self.formatting.format(j), end=' |')
+                else:
+                    print(self.formatting.format((self.max_length-1)*' '+'M'), end=" |")
             print(self.formatting.format(self.supply[ind]))
             ind += 1
+        print("       ", end="")
+        print('_' * (self.max_length + 1) * (len(self.demand) + 1))
+        print("Demand ", end="")
         for i in self.demand:
-            print(self.formatting.format(i), end=' ')
+            print(self.formatting.format(i), end=' '*(self.max_length-1))
         print()
 
-
-    def __print_debug(self, table):
-        self.__print(table, 'debug')
-
-
     def print_init(self):
-        self.__print(self.costs, 'initial')
+        self.__print(self.costs, 'Initial')
         
     def print_solution(self):
         self.solve()
@@ -70,7 +87,7 @@ class TransportationModel:
         inf_cost = 0
         for i in range(len(self.solution)):
             for j in range(len(self.solution[0])):
-                if self.costs[i][j] == float('inf'):
+                if self.costs[i][j] == self.infinity:
                     inf_cost += self.solution[i][j]
                 else:
                     final_cost += self.solution[i][j] * self.costs[i][j]
@@ -152,8 +169,6 @@ class VogelModel(TransportationModel):
                 j = where_min
                 i = self.__ind_of_smallest([self.mutable_costs[el][j] for el in range(len(self.mutable_costs))])
                 self.__occupie(i, j)
-            
-            
 
     def __occupie(self, i, j):
         supply_occupied = sum(self.solution[i])
@@ -166,18 +181,17 @@ class VogelModel(TransportationModel):
             self.solution[i][j] = self.demand[j] - demand_satisfied
             self.__del_row_column(j, False)
 
-
     def __del_row_column(self, i, is_row):
         if is_row:
             for j in range(len(self.mutable_costs[0])):
-                self.mutable_costs[i][j] = float('inf')
+                self.mutable_costs[i][j] = self.infinity
         else:
             for j in range(len(self.mutable_costs)):
-                self.mutable_costs[j][i] = float('inf')
+                self.mutable_costs[j][i] = self.infinity
 
 
     def __diff_of_smallest(self, a:list):
-        min1, min2 = float('inf'), float('inf')
+        min1, min2 = self.infinity, self.infinity
 
         for i in a:
             if i <= min1:
@@ -186,11 +200,11 @@ class VogelModel(TransportationModel):
             if i < min2:
                 min2 = i
                 continue
-        return min2 - min1 if (min1 != float('inf') or min2 != float('inf')) else -1
+        return min2 - min1 if (min1 != self.infinity or min2 != self.infinity) else -1
             
 
     def __ind_of_smallest(self, a:list):
-        min1 = float('inf')
+        min1 = self.infinity
         min_index = -1
         for i in range(len(a)):
             if a[i] < min1:
@@ -212,7 +226,7 @@ class RusselsModel(TransportationModel):
             max_of_rows = [max(i) for i in self.mutable_costs]
             max_of_columns = [max(i) for i in [[self.mutable_costs[el][j] for el in range(len(self.mutable_costs))] for j in range(len(self.mutable_costs[0]))]]
             
-            min_delta = float('inf')
+            min_delta = self.infinity
             min_i = -1
             min_j = -1
             for i in range(len(self.mutable_costs)):
